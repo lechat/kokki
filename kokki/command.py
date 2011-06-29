@@ -27,8 +27,9 @@ def main():
         parser.error("must specify at least one command")
 
     logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger('kokki')
+
     if options.verbose:
-        logger = logging.getLogger('kokki')
         logger.setLevel(logging.DEBUG)
 
     if options.config:
@@ -69,6 +70,7 @@ def main():
         logger.debug('Processing %s as kitchen file(s)' % files)
 
         globs = {}
+        file_found = False
         for fname in files:
             globs["__file__"] = os.path.abspath(fname)
             if os.path.exists(globs["__file__"]):
