@@ -49,7 +49,7 @@ def main():
             with open(filename, "rb") as fp:
                 kit = pickle.load(fp)
         else: 
-            sys.stderr.write("Unknown config format specified '%s'. Can only work with yaml or pickle \n" % c)
+            sys.stderr.write("Unknown config format specified '%s'. Can only work with yaml or pickle \n" % fmt)
             sys.exit(1)
                 
             
@@ -125,7 +125,7 @@ def main():
                 with open(filename, "wb") as fp:
                     pickle.dump(kit, fp, pickle.HIGHEST_PROTOCOL)
         else: 
-            sys.stderr.write("Unknown config format specified '%s'. Can only work with yaml or pickle \n" % c)
+            sys.stderr.write("Unknown config format specified '%s'. Can only work with yaml or pickle \n" % fmt)
             sys.exit(1)
 
         sys.exit(0)
