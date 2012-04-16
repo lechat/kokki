@@ -50,6 +50,11 @@ def main():
             import cPickle as pickle
             with open(filename, "rb") as fp:
                 kit = pickle.load(fp)
+        elif fmt == "json":
+            logger.debug(msg='Config file format is json')
+            import jsonpickle
+            with open(filename, "rb") as fp:
+                kit = jsonpickle.decode(fp.read())
         else:
             sys.stderr.write("Unknown config format specified '%s'. Can only work with yaml or pickle \n" % fmt)
             sys.exit(1)
@@ -125,6 +130,13 @@ def main():
             else:
                 with open(filename, "wb") as fp:
                     pickle.dump(kit, fp, pickle.HIGHEST_PROTOCOL)
+        elif fmt == "json":
+            import jsonpickle
+            if filename == "-":
+                print jsonpickle.encode(kit)
+            else:
+                with open(filename, "wb") as fp:
+                    fp.write(jsonpickle.encode(kit))
         else:
             sys.stderr.write("Unknown config format specified '%s'. Can only work with yaml or pickle \n" % fmt)
             sys.exit(1)
