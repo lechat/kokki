@@ -17,8 +17,13 @@ from kokki.version import long_version
 class Environment(object):
     _instances = []
 
-    def __init__(self):
+    def __init__(self, verbose_logging):
         self.log = logging.getLogger("kokki")
+        logging.basicConfig(level=logging.INFO)
+
+        if verbose_logging:
+            self.log.setLevel(logging.DEBUG)
+
         self.reset()
 
     def reset(self):
@@ -84,6 +89,7 @@ class Environment(object):
         raise Exception("Unknown condition type %r" % cond)
 
     def run(self):
+        self.log.debug('> Environment.run()')
         with self:
             # Run resource actions
             for resource in self.resource_list:
@@ -104,6 +110,7 @@ class Environment(object):
             while self.delayed_actions:
                 action, resource = self.delayed_actions.pop()
                 self.run_action(resource, action)
+        self.log.debug('< Environment.run()')
 
     @classmethod
     def get_instance(cls):

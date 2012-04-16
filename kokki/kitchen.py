@@ -1,6 +1,7 @@
 
 __all__ = ["Kitchen", "Cookbook"]
 
+import logging
 import os
 from kokki.environment import Environment
 from kokki.exceptions import Fail
@@ -48,7 +49,7 @@ class Cookbook(object):
                     with open(path, "rb") as fp:
                         source = fp.read()
                         exec compile(source, libpath, "exec") in globs
-    
+
             self._library = AttributeDictionary(globs)
         return self._library
 
@@ -74,9 +75,15 @@ class Cookbook(object):
         return u"Cookbook['%s']" % self.name
 
 class Kitchen(Environment):
-    def __init__(self):
-        super(Kitchen, self).__init__()
-        self.included_recipes_order = [] 
+    def __init__(self, verbose_logging=False):
+        super(Kitchen, self).__init__(verbose_logging)
+        logging.basicConfig(level=logging.INFO)
+        self.log = logging.getLogger('kokki')
+
+        if verbose_logging:
+            self.log.setLevel(logging.DEBUG)
+
+        self.included_recipes_order = []
         self.included_recipes = {}
         self.sourced_recipes = set()
         self.cookbooks = AttributeDictionary()
@@ -121,7 +128,7 @@ class Kitchen(Environment):
                 cookbook, recipe = name.split('.')
             except ValueError:
                 cookbook, recipe = name, "default"
-            
+
             try:
                 cb = self.cookbooks[cookbook]
             except KeyError:
@@ -137,6 +144,7 @@ class Kitchen(Environment):
     def source_recipe(self, cookbook, recipe):
         name = "%s.%s" % (cookbook.name, recipe)
         if name in self.sourced_recipes:
+            self.log.debug('Name "%s" already sourced in coockbook' % name)
             return
 
         self.sourced_recipes.add(name)
@@ -145,18 +153,29 @@ class Kitchen(Environment):
         rc = cookbook.get_recipe(recipe)
         globs = {'env': self}
         with self:
+            self.log.debug('Compiling recipe "%s"' % name)
             exec compile(rc, name, 'exec') in globs
 
     def prerun(self):
+        self.log.debug('> Kitchen.prerun')
         for name in self.included_recipes_order:
             cookbook, recipe = self.included_recipes[name]
+            self.log.debug('Sourcing recipe "%s", into cookbook' % (recipe))
             self.source_recipe(cookbook, recipe)
+        self.log.debug('< Kitchen.prerun')
 
     def run(self):
+        self.log.debug('> Kitchen.run()')
         self.running = True
         self.prerun()
+
+        with open('/tmp/kitchen.yaml', 'w') as f:
+            import yaml
+            yaml.dump(self, f)
+
         super(Kitchen, self).run()
         self.running = False
+        self.log.debug('< Kitchen.run()')
 
     def __getstate__(self):
         state = super(Kitchen, self).__getstate__()

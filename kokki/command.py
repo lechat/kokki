@@ -7,7 +7,7 @@ from optparse import OptionParser
 from kokki.kitchen import Kitchen
 
 def build_parser():
-    parser = OptionParser(usage="Usage: %prog [options] <command> ...")
+    parser = OptionParser(usage="Usage: %prog [options] <role> ...")
     parser.add_option("-f", "--file", dest="filename",
         help="Look for the command in FILE", metavar="FILE", default="kitchen.py")
     parser.add_option("-l", "--load", dest="config",
@@ -39,21 +39,20 @@ def main():
         else:
             logger.debug('Assuming that config is in yaml format')
             fmt, filename = "yaml", options.config
+
         if fmt == "yaml":
             logger.debug(msg='Config file format is yaml')
             import yaml
-            with open(options.config, "rb") as fp:
+            with open(filename, "rb") as fp:
                 kit = yaml.load(fp.read())
         elif fmt == "pickle":
             logger.debug(msg='Config file format is pickle')
             import cPickle as pickle
             with open(filename, "rb") as fp:
                 kit = pickle.load(fp)
-        else: 
+        else:
             sys.stderr.write("Unknown config format specified '%s'. Can only work with yaml or pickle \n" % fmt)
             sys.exit(1)
-                
-            
     else:
         logger.debug('Config file not specified, trying to read "kitchen.py"')
         path = os.path.abspath(options.filename)
@@ -80,7 +79,7 @@ def main():
                     source = fp.read()
                     exec compile(source, fname, 'exec') in globs
                 del globs['__file__']
-        
+
         if not file_found:
             sys.stderr.write("Need to have 'kitchen.py' or other files specified by -f parameter")
             sys.exit(1)
@@ -95,7 +94,7 @@ def main():
                 sys.exit(1)
         for r in roles:
             r(kit)
-    
+
     logger.debug('Processing overrides: %s' % options.overrides)
     for over in options.overrides:
         name, value = over.split('=', 1)
@@ -104,7 +103,7 @@ def main():
         except ValueError:
             pass
         kit.update_config({name: value})
-    
+
     if options.dump:
         logger.debug('Dumping config files')
         if ':' in options.dump:
@@ -113,7 +112,7 @@ def main():
             logger.debug('Assuming format is yaml')
             fmt, filename = "yaml", options.dump
         if fmt == "yaml":
-            import yaml 
+            import yaml
             if filename == "-":
                 print yaml.dump(kit)
             else:
@@ -126,7 +125,7 @@ def main():
             else:
                 with open(filename, "wb") as fp:
                     pickle.dump(kit, fp, pickle.HIGHEST_PROTOCOL)
-        else: 
+        else:
             sys.stderr.write("Unknown config format specified '%s'. Can only work with yaml or pickle \n" % fmt)
             sys.exit(1)
 
