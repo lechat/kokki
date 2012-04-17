@@ -10,7 +10,7 @@ def build_parser():
     parser = OptionParser(usage="Usage: %prog [options] <role> ...")
     parser.add_option("-f", "--file", dest="filename",
         help="Look for the command in FILE. If file name is not specified, will look for 'kitchen.py'", metavar="FILE", default="kitchen.py")
-    parser.add_option("-l", "--load", dest="[fmt:]config",
+    parser.add_option("-l", "--load", dest="config",
             help="Load dumped kitchen from FILE. Optional prefix fmt: specifies file type (yaml, pickle or json). Default format is yaml.", metavar="FILE", default=None)
     parser.add_option("-d", "--dump", dest="dump",
         help = "Dump a serialized representation of what would be run"
@@ -133,6 +133,8 @@ def main():
 
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('kokki')
+
+    logger.debug('Options: %s' % options)
 
     if options.verbose:
         logger.setLevel(logging.DEBUG)
