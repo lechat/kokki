@@ -32,12 +32,35 @@ class Environment(object):
         self.resources = {}
         self.resource_list = []
         self.delayed_actions = set()
-        self.update_config({
+
+        default_config = {
             'date': datetime.now(),
             'kokki.long_version': long_version(),
             'kokki.backup.path': '/tmp/kokki/backup',
+            'kokki.template_engine': 'jinja2',
             'kokki.backup.prefix': datetime.now().strftime("%Y%m%d%H%M%S"),
-        })
+        }
+
+        stored_config = self._load_kokki_conf()
+        if stored_config:
+            default_config.update(stored_config)
+
+        self.update_config(default_config)
+        self.log.debug('Environment.config: %s' % self.config)
+
+    def _load_kokki_conf(self):
+        try:
+            import jsonpickle
+            conf_path = os.path.join(os.path.dirname(__file__), 'kokki_conf.json')
+            if os.path.exists(conf_path):
+                with open(conf_path, "rb") as fp:
+                    return jsonpickle.decode(fp.read())
+            else:
+                self.log.warning('kokki_conf.json not found. Using defaults.')
+                return None
+        except ImportError:
+            self.log.warning('Can not read kokki_conf.json because jsonpickle is not installed. Using defaults.')
+            return None
 
     def backup_file(self, path):
         if self.config.kokki.backup:
