@@ -1,0 +1,4 @@
+{
+  "kokki.template_engine": "jinja2",
+  "kokki.backup.path": "/tmp/kokki-1/backup"
+}
