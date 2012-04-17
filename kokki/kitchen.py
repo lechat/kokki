@@ -95,6 +95,7 @@ class Kitchen(Environment):
             # Check if it's a Python import path
             origpath = path
             if "." in path and not os.path.exists(path):
+                self.log.debug('Adding cookbook path: "%s"' % path)
                 pkg = __import__(path, {}, {}, path)
                 path = os.path.dirname(os.path.abspath(pkg.__file__))
             self.cookbook_paths.append((origpath, os.path.abspath(path)))
@@ -108,6 +109,7 @@ class Kitchen(Environment):
             cb = None
             for origpath, path in reversed(self.cookbook_paths):
                 fullpath = os.path.join(path, name)
+                self.log.debug('Loading cookbook from "%s"' % fullpath)
                 if not os.path.exists(fullpath):
                     continue
                 cb = Cookbook.load_from_path(name, fullpath)
@@ -142,6 +144,7 @@ class Kitchen(Environment):
                 self.source_recipe(cb, recipe)
 
     def source_recipe(self, cookbook, recipe):
+        ''' Loads recipe '''
         name = "%s.%s" % (cookbook.name, recipe)
         if name in self.sourced_recipes:
             self.log.debug('Name "%s" already sourced in coockbook' % name)
@@ -157,6 +160,7 @@ class Kitchen(Environment):
             exec compile(rc, name, 'exec') in globs
 
     def prerun(self):
+        ''' Loads all recipes in order '''
         self.log.debug('> Kitchen.prerun')
         for name in self.included_recipes_order:
             cookbook, recipe = self.included_recipes[name]
@@ -169,9 +173,9 @@ class Kitchen(Environment):
         self.running = True
         self.prerun()
 
-        with open('/tmp/kitchen.yaml', 'w') as f:
-            import yaml
-            yaml.dump(self, f)
+        # with open('/tmp/kitchen.yaml', 'w') as f:
+        #     import yaml
+        #     yaml.dump(self, f)
 
         super(Kitchen, self).run()
         self.running = False
