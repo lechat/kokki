@@ -1,20 +1,24 @@
 
-__description__ = "PostgreSQL database 9.0"
+__description__ = "PostgreSQL database 9"
 __config__ = {
+    "postgresql9.version": dict (
+        description = "Version of PostgreSQL 9",
+        default = "9.1",
+    ),
     "postgresql9.data_dir": dict(
         description = "Location of the PostgreSQL databases",
-        default = "/var/lib/postgresql/9.0/main",
+        default = "/var/lib/postgresql/9.1/main",
     ),
     "postgresql9.config_dir": dict(
         description = "Location of the PostgreSQL configuration files",
-        default = "/etc/postgresql/9.0/main",
+        default = "/etc/postgresql/9.1/main",
     ),
     "postgresql9.pidfile": dict(
         description = "Path to the PostgreSQL pid file",
-        default = "/var/run/postgresql/9.0-main.pid",
+        default = "/var/run/postgresql/9.1-main.pid",
     ),
     "postgresql9.unix_socket_directory": dict(
-        default = None,
+        default = "/var/run/postgresql",
     ),
     "postgresql9.listen_addresses": dict(
         description = "IP addresses PostgreSQL should listen on (* for all interfaces)",
@@ -57,7 +61,7 @@ __config__ = {
         default = False,
     ),
     "postgresql9.shared_buffers": dict(
-        default = "28MB",
+        default = "24MB",
     ),
     "postgresql9.log_min_duration_statement": dict(
         description = "-1 is disabled, 0 logs all statements and their durations, > 0 logs only statements running at least this number of milliseconds",

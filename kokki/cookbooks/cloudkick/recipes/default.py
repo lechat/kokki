@@ -7,8 +7,8 @@ apt_list_path = '/etc/apt/sources.list.d/cloudkick.list'
 apt = None
 if env.system.platform == "ubuntu":
     ver = env.system.lsb['release']
-    if ver == "10.10":
-        apt = "deb http://packages.cloudkick.com/ubuntu lucid main"
+    if ver in ("10.10", "11.04", "11.10"):
+        apt = "deb http://packages.cloudkick.com/ubuntu maverick main"
     elif ver == "10.04":
         apt = "deb http://packages.cloudkick.com/ubuntu lucid main"
     elif ver == "9.10":
@@ -56,3 +56,5 @@ Package("cloudkick-agent",
 Service("cloudkick-agent",
     supports_restart = True,
     subscribes = [("restart", env.resources["File"]["/etc/cloudkick.conf"])])
+
+Package("libssl0.9.8") # This seems to not get installed for some reason
