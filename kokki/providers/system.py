@@ -94,10 +94,8 @@ class FileProvider(Provider):
         if content is None:
             return None
         elif isinstance(content, basestring):
-            print 'FileProvider content is string'
             return content
         elif hasattr(content, "__call__"):
-            print 'FileProvider content is callable'
             return content()
         raise Fail("Unknown source type for %s: %r" % (self, content))
 
