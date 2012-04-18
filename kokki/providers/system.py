@@ -14,12 +14,12 @@ def _coerce_uid(user):
     except ValueError:
         uid = pwd.getpwnam(user).pw_uid
     return uid
-    
+
 def _coerce_gid(group):
     try:
         gid = int(group)
     except ValueError:
-        gid = grp.getgrnam(group).gr_gid 
+        gid = grp.getgrnam(group).gr_gid
     return gid
 
 def _ensure_metadata(path, user, group, mode = None, log = None):
@@ -48,7 +48,7 @@ def _ensure_metadata(path, user, group, mode = None, log = None):
             updated = True
 
     return updated
-    
+
 
 class FileProvider(Provider):
     def action_create(self):
@@ -94,8 +94,10 @@ class FileProvider(Provider):
         if content is None:
             return None
         elif isinstance(content, basestring):
+            print 'FileProvider content is string'
             return content
         elif hasattr(content, "__call__"):
+            print 'FileProvider content is callable'
             return content()
         raise Fail("Unknown source type for %s: %r" % (self, content))
 

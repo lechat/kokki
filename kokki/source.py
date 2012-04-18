@@ -1,5 +1,5 @@
-
 from __future__ import with_statement
+import logging
 
 __all__ = ["Source", "Template", "StaticFile", "DownloadSource"]
 
@@ -9,6 +9,14 @@ import urllib2
 import urlparse
 from kokki import environment
 from kokki.exceptions import Fail
+
+def load_class(class_name, *args):
+    parts = class_name.split('.')
+    module = ".".join(parts[:-1])
+    m = __import__( module )
+    for comp in parts[1:]:
+        m = getattr(m, comp)
+    return m(*args)
 
 class Source(object):
     def get_content(self):
@@ -35,48 +43,26 @@ class StaticFile(Source):
         with open(path, "rb") as fp:
             return fp.read()
 
-try:
-    from jinja2 import Environment, BaseLoader, TemplateNotFound
-except ImportError:
-    class Template(Source):
-        def __init__(self, name, variables=None, env=None):
-            raise Exception("Jinja2 required for Template")
-else:
-    class TemplateLoader(BaseLoader):
-        def __init__(self, env=None):
-            self.env = env or environment.Environment.get_instance()
+class Template(Source):
+    ''' Template Factory '''
+    def __init__(self, name, variables=None, env=None, engine=None):
+        self._log = logging.getLogger("kokki")
 
-        def get_source(self, environment, template):
-            try:
-                cookbook, name = template.split('/', 1)
-            except ValueError:
-                raise Fail("[Template(%s)] Path must include cookbook name (e.g. 'nginx/nginx.conf.j2')" % template)
-            cb = self.env.cookbooks[cookbook]
-            path = os.path.join(cb.path, "templates", name)
-            if not os.path.exists(path):
-                raise TemplateNotFound("%s at %s" % (template, path))
-            mtime = os.path.getmtime(path)
-            with open(path, "rb") as fp:
-                source = fp.read().decode('utf-8')
-            return source, path, lambda:mtime == os.path.getmtime(path)
+        self.name = name
 
-    class Template(Source):
-        def __init__(self, name, variables=None, env=None):
-            self.name = name
-            self.env = env or environment.Environment.get_instance()
-            self.context = variables.copy() if variables else {}
-            self.template_env = Environment(loader=TemplateLoader(self.env), autoescape=False)
-            self.template = self.template_env.get_template(self.name)
+        print 't env is %s(%s)' % (type(env), env)
+        self.env = env or environment.Environment.get_instance()
+        if engine:
+            self.template_engine_name = engine
+        else:
+            # Extra care in case template engine is not onfigured at all
+            self.template_engine_name = env.config['kokki'].get('template_engine', 'jinja2')
 
-        def get_content(self):
-            self.context.update(
-                env = self.env,
-                repr = repr,
-                str = str,
-                bool = bool,
-            )
-            rendered = self.template.render(self.context)
-            return rendered + "\n" if not rendered.endswith('\n') else rendered
+        self._log.debug('Going to use "%s" template engine' % self.template_engine_name)
+        self.template_engine = load_class('kokki.providers.template.' + self.template_engine_name.capitalize() + 'Template', name, variables, env)
+
+    def get_content(self):
+        return self.template_engine.get_content()
 
 class DownloadSource(Source):
     def __init__(self, url, cache=True, md5sum=None, env=None):
