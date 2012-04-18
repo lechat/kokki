@@ -50,7 +50,6 @@ class Template(Source):
 
         self.name = name
 
-        print 't env is %s(%s)' % (type(env), env)
         self.env = env or environment.Environment.get_instance()
         if engine:
             self.template_engine_name = engine
