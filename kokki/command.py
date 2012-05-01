@@ -82,6 +82,7 @@ def load_kitchens(options_filename, args, logger):
     roles = []
     for c in args:
         try:
+            logger.debug('Adding role %s' % c)
             roles.append(globs[c])
         except KeyError:
             sys.stderr.write("Function for role '%s' not found in config\n" % c)
