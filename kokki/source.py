@@ -10,13 +10,13 @@ import urlparse
 from kokki import environment
 from kokki.exceptions import Fail
 
-def load_class(class_name, *args):
+def load_class(class_name, *args, **kwargs):
     parts = class_name.split('.')
     module = ".".join(parts[:-1])
     m = __import__( module )
     for comp in parts[1:]:
         m = getattr(m, comp)
-    return m(*args)
+    return m(*args, **kwargs)
 
 class Source(object):
     def get_content(self):
@@ -45,7 +45,7 @@ class StaticFile(Source):
 
 class Template(Source):
     ''' Template Factory '''
-    def __init__(self, name, variables=None, env=None, engine=None):
+    def __init__(self, name, variables=None, env=None, engine=None, **kwargs):
         self._log = logging.getLogger("kokki")
 
         self.name = name
@@ -58,7 +58,7 @@ class Template(Source):
             self.template_engine_name = env.config['kokki'].get('template_engine', 'jinja2')
 
         self._log.debug('Going to use "%s" template engine' % self.template_engine_name)
-        self.template_engine = load_class('kokki.providers.template.' + self.template_engine_name.capitalize() + 'Template', name, variables, env)
+        self.template_engine = load_class('kokki.providers.template.' + self.template_engine_name.capitalize() + 'Template', name, variables, env, **kwargs)
 
     def get_content(self):
         return self.template_engine.get_content()
