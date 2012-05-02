@@ -30,7 +30,7 @@ else:
             return source, path, lambda:mtime == os.path.getmtime(path)
 
     class Jinja2Template(Source):
-        def __init__(self, name, variables=None, env=None):
+        def __init__(self, name, variables=None, env=None, **kwargs):
             self.name = name
             self.env = env or environment.Environment.get_instance()
             self.context = variables.copy() if variables else {}
