@@ -47,8 +47,8 @@ class Cookbook(object):
                     path = os.path.join(libpath, f)
                     with open(path, "rb") as fp:
                         source = fp.read()
-                        exec compile(source, libpath, "exec") in globs
-    
+                        exec compile(source, path, "exec") in globs
+
             self._library = AttributeDictionary(globs)
         return self._library
 
@@ -58,7 +58,7 @@ class Cookbook(object):
             raise Fail("Recipe %s in cookbook %s not found" % (name, self.name))
 
         with open(path, "rb") as fp:
-            return fp.read()
+            return fp.read(), path
 
     def __getattr__(self, name):
         return self.library[name]
@@ -76,7 +76,7 @@ class Cookbook(object):
 class Kitchen(Environment):
     def __init__(self):
         super(Kitchen, self).__init__()
-        self.included_recipes_order = [] 
+        self.included_recipes_order = []
         self.included_recipes = {}
         self.sourced_recipes = set()
         self.cookbooks = AttributeDictionary()
@@ -121,7 +121,7 @@ class Kitchen(Environment):
                 cookbook, recipe = name.split('.')
             except ValueError:
                 cookbook, recipe = name, "default"
-            
+
             try:
                 cb = self.cookbooks[cookbook]
             except KeyError:
@@ -142,10 +142,10 @@ class Kitchen(Environment):
         self.sourced_recipes.add(name)
         cookbook.loader(self)
 
-        rc = cookbook.get_recipe(recipe)
+        rc, path = cookbook.get_recipe(recipe)
         globs = {'env': self}
         with self:
-            exec compile(rc, name, 'exec') in globs
+            exec compile(rc, path, 'exec') in globs
 
     def prerun(self):
         for name in self.included_recipes_order:

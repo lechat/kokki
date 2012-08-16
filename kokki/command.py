@@ -61,7 +61,7 @@ def main():
             globs["__file__"] = os.path.abspath(fname)
             with open(fname, "rb") as fp:
                 source = fp.read()
-            exec compile(source, fname, 'exec') in globs
+            exec compile(source, os.path.abspath(fname), 'exec') in globs
         del globs['__file__']
 
         kit = Kitchen()
@@ -74,7 +74,7 @@ def main():
                 sys.exit(1)
         for r in roles:
             r(kit)
-    
+
     for over in options.overrides:
         name, value = over.split('=', 1)
         try:
@@ -82,7 +82,7 @@ def main():
         except ValueError:
             pass
         kit.update_config({name: value})
-    
+
     if options.dump:
         if ':' in options.dump:
             fmt, filename = options.dump.split(':', 1)
