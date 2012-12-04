@@ -1,4 +1,4 @@
-
+import logging
 import hashlib
 import hmac
 import os
@@ -9,6 +9,7 @@ class SSHKnownHostsFile(object):
     def __init__(self, path=None):
         self.hosts = []
         self.parse(path)
+
 
     def parse(self, path):
         self.hosts = []
@@ -101,6 +102,7 @@ class SSHKnownHostsFile(object):
 
 class SSHAuthorizedKeysFile(object):
     def __init__(self, path=None):
+        self.log = logging.getLogger('kokki').getChild('SSHAuthorizedKeysFile')
         self.keys = {}
         if path:
             self.parse(path)
@@ -108,8 +110,10 @@ class SSHAuthorizedKeysFile(object):
     def parse(self, path):
         self.keys = {}
         try:
+            line_number = 0
             with open(path, "r") as fp:
                 for line in fp:
+                    line_number += 1
                     line = line.strip()
                     if not line:
                         continue
@@ -119,12 +123,12 @@ class SSHAuthorizedKeysFile(object):
                         # TODO: Do something with cmd? It'll get overwritten
                         line = line[line.find("ssh-"):]
                     l = line.split(' ')
-                    cmd = None
-                    if len(l) == 3:
-                        keytype, key, name = l
-                    else:
-                        keytype, key = l
-                        name = ""
+                    if len(l) == 1:
+                        self.log.warning('Invalid key on line %s of %s. Ignoring.' % (line_number, path))
+                        continue
+
+                    keytype, key = l[0:2]
+                    name = ' '.join(l[2:])
                     self.keys[(keytype, key)] = name
         except IOError as exc:
             if exc.errno != 2: # No such file

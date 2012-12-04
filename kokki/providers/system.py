@@ -4,9 +4,11 @@ from __future__ import with_statement
 import grp
 import os
 import pwd
+import shutil
 import subprocess
 from kokki.base import Fail
 from kokki.providers import Provider
+from adlt.logs_asserts import start as start_msg
 
 def _coerce_uid(user):
     try:
@@ -14,12 +16,12 @@ def _coerce_uid(user):
     except ValueError:
         uid = pwd.getpwnam(user).pw_uid
     return uid
-    
+
 def _coerce_gid(group):
     try:
         gid = int(group)
     except ValueError:
-        gid = grp.getgrnam(group).gr_gid 
+        gid = grp.getgrnam(group).gr_gid
     return gid
 
 def _ensure_metadata(path, user, group, mode = None, log = None):
@@ -48,7 +50,7 @@ def _ensure_metadata(path, user, group, mode = None, log = None):
             updated = True
 
     return updated
-    
+
 
 class FileProvider(Provider):
     def action_create(self):
@@ -102,6 +104,7 @@ class FileProvider(Provider):
 
 class DirectoryProvider(Provider):
     def action_create(self):
+        log and log.info("Creating directory: ", self.resource.path)
         path = self.resource.path
         if not os.path.exists(path):
             self.log.info("Creating directory %s" % self.resource)
@@ -115,16 +118,24 @@ class DirectoryProvider(Provider):
             self.resource.updated()
 
     def action_delete(self):
+        log and log.info("Deleting  directory: ", self.resource.path)
         path = self.resource.path
         if os.path.exists(path):
             self.log.info("Removing directory %s" % self.resource)
-            os.rmdir(path)
-            # TODO: recursive
+            if self.resource.recursive:
+                shutil.rmtree(path)
+            else:
+                os.rmdir(path)
             self.resource.updated()
 
+    def action_empty(self):
+        self.resource.recursive = True
+        self.action_delete()
+        self.action_create()
 
 class LinkProvider(Provider):
     def action_create(self):
+        log and log.info("Creating link: ", self.resource.path)
         path = self.resource.path
 
         if os.path.lexists(path):
@@ -146,6 +157,7 @@ class LinkProvider(Provider):
             self.resource.updated()
 
     def action_delete(self):
+        log and log.info("Deleting link: ", self.resource.path)
         path = self.resource.path
         if os.path.exists(path):
             self.log.info("Deleting %s" % self.resource)
@@ -170,14 +182,19 @@ class ExecuteProvider(Provider):
     def action_run(self):
         if self.resource.creates:
             if os.path.exists(self.resource.creates):
+                print "Resource: '%s' already present, skipping execution"  % self.resource.creates
                 return
 
-        self.log.info("Executing %s" % self.resource)
+        if not self.resource.dry_run:
+            self.log.info("Executing %s" % self.resource)
 
-        ret = subprocess.call(self.resource.command, shell=True, cwd=self.resource.cwd, env=self.resource.environment, preexec_fn=_preexec_fn(self.resource))
+            ret = subprocess.call(self.resource.command, shell=True, cwd=self.resource.cwd, env=self.resource.environment, preexec_fn=_preexec_fn(self.resource))
 
-        if self.resource.returns and ret not in self.resource.returns:
-            raise Fail("%s failed, returned %d instead of %s" % (self, ret, self.resource.returns))
+            if self.resource.returns and ret not in self.resource.returns:
+                raise Fail("%s failed, returned %d instead of %s" % (self, ret, self.resource.returns))
+        else:
+            self.log.info("DRY_RUN: Skipped %s" % self.resource)
+
         self.resource.updated()
 
 class ScriptProvider(Provider):

@@ -1,9 +1,10 @@
 
 __all__ = ["Kitchen", "Cookbook"]
 
+import logging
 import os
 from kokki.environment import Environment
-from kokki.exceptions import Fail
+from kokki.exceptions import Fail,UserFail
 from kokki.system import System
 from kokki.utils import AttributeDictionary
 
@@ -13,10 +14,15 @@ class Cookbook(object):
         self.path = path
         self._meta = None
         self._library = None
+        self.log = logging.getLogger('kokki').getChild('cookbook.%s' % self.name)
 
     @property
     def config(self):
         return self.meta.get('__config__', {})
+
+    @property
+    def ext_config(self):
+        return self.meta.get('__config_extended__', {})
 
     @property
     def loader(self):
@@ -26,11 +32,15 @@ class Cookbook(object):
     def meta(self):
         if self._meta is None:
             metapath = os.path.join(self.path, "metadata.py")
-            with open(metapath, "rb") as fp:
-                source = fp.read()
-            meta = {'system': System.get_instance()}
-            exec compile(source, metapath, "exec") in meta
-            self._meta = meta
+            if not os.path.exists(metapath):
+                self.log.warning("Metadata for cookbook %s not found" % self.name)
+            else:
+                with open(metapath, "rb") as fp:
+                    source = fp.read()
+                meta = {'system': System.get_instance()}
+                exec compile(source, metapath, "exec") in meta
+                self._meta = meta
+
         return self._meta
 
     @property
@@ -54,6 +64,7 @@ class Cookbook(object):
 
     def get_recipe(self, name):
         path = os.path.join(self.path, "recipes", name + ".py")
+        self.log.debug('DEBUG: path is %s', path)
         if not os.path.exists(path):
             raise Fail("Recipe %s in cookbook %s not found" % (name, self.name))
 
@@ -74,8 +85,14 @@ class Cookbook(object):
         return u"Cookbook['%s']" % self.name
 
 class Kitchen(Environment):
-    def __init__(self):
-        super(Kitchen, self).__init__()
+    def __init__(self, verbose_logging=False):
+        super(Kitchen, self).__init__(verbose_logging)
+        logging.basicConfig(level=logging.INFO)
+        self.log = logging.getLogger('kokki')
+
+        if verbose_logging:
+            self.log.setLevel(logging.DEBUG)
+
         self.included_recipes_order = []
         self.included_recipes = {}
         self.sourced_recipes = set()
@@ -88,6 +105,7 @@ class Kitchen(Environment):
             # Check if it's a Python import path
             origpath = path
             if "." in path and not os.path.exists(path):
+                self.log.debug('Adding cookbook path: "%s"' % path)
                 pkg = __import__(path, {}, {}, path)
                 path = os.path.dirname(os.path.abspath(pkg.__file__))
             self.cookbook_paths.append((origpath, os.path.abspath(path)))
@@ -101,6 +119,7 @@ class Kitchen(Environment):
             cb = None
             for origpath, path in reversed(self.cookbook_paths):
                 fullpath = os.path.join(path, name)
+                self.log.debug('Loading cookbook from "%s"' % fullpath)
                 if not os.path.exists(fullpath):
                     continue
                 cb = Cookbook.load_from_path(name, fullpath)
@@ -135,8 +154,10 @@ class Kitchen(Environment):
                 self.source_recipe(cb, recipe)
 
     def source_recipe(self, cookbook, recipe):
+        ''' Loads recipe '''
         name = "%s.%s" % (cookbook.name, recipe)
         if name in self.sourced_recipes:
+            self.log.debug('Name "%s" already sourced in cookbook' % name)
             return
 
         self.sourced_recipes.add(name)
@@ -145,18 +166,46 @@ class Kitchen(Environment):
         rc, path = cookbook.get_recipe(recipe)
         globs = {'env': self}
         with self:
+            self.log.debug('Compiling recipe "%s"' % name)
             exec compile(rc, path, 'exec') in globs
 
     def prerun(self):
+        ''' Loads all recipes in order '''
+        self.log.debug('> Kitchen.prerun')
         for name in self.included_recipes_order:
             cookbook, recipe = self.included_recipes[name]
+            self.log.debug('Sourcing recipe "%s", into cookbook' % (recipe))
             self.source_recipe(cookbook, recipe)
+        self.log.debug('< Kitchen.prerun')
 
     def run(self):
+        self.log.debug('> Kitchen.run()')
         self.running = True
         self.prerun()
+
         super(Kitchen, self).run()
         self.running = False
+        self.log.debug('< Kitchen.run()')
+
+    def check_input(self):
+        errors_found = False
+        for recipe_name in self.included_recipes_order:
+            cookbook, recipe = self.included_recipes[recipe_name]
+            self.log.info("'%s': Recipe included " , recipe_name)
+            recipe_metadata = cookbook.ext_config.get(recipe)
+            if not recipe_metadata:
+                self.log.warning("'%s' No metadata found, cannot validate parameters" , recipe_name)
+                continue
+
+            for parameter_name, parameter_metadata in recipe_metadata.items():
+                parameter_exist, error_msg = self._check_parameter(parameter_name)
+                if parameter_metadata.get("mandatory") and not parameter_exist:
+                    errors_found = True
+                    self.log.critical("'%s': '%s' is missing, found parents until '%s'" , recipe_name, parameter_name, error_msg)
+
+        if errors_found:
+            raise UserFail("ERROR: Kitchen role cannot run, recipes are missing parameters")
+
 
     def __getstate__(self):
         state = super(Kitchen, self).__getstate__()
@@ -172,3 +221,26 @@ class Kitchen(Environment):
             self.add_cookbook_path(path)
         for recipe in state['included_recipes']:
             self.include_recipe(recipe)
+
+    def _check_parameter(self, name):
+        parent = self.config
+        parent_name = "env.config"
+        for part in name.split('.'):
+            child = parent.get(part)
+            if not child:
+                return False, parent_name
+
+            parent = child
+            parent_name = parent_name + "." + part
+
+        return True, ""
+
+    def _get_parameter(self, name):
+        parent = self.config
+        for part in name.split('.'):
+            child = parent.get(part)
+            if not child:
+                return None
+            parent = child
+
+        return child

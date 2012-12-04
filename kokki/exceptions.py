@@ -4,3 +4,6 @@ class Fail(Exception):
 
 class InvalidArgument(Fail):
     pass
+
+class UserFail(Fail):
+    pass

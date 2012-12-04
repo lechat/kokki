@@ -17,8 +17,13 @@ from kokki.version import long_version
 class Environment(object):
     _instances = []
 
-    def __init__(self):
+    def __init__(self, verbose_logging):
         self.log = logging.getLogger("kokki")
+        logging.basicConfig(level=logging.INFO)
+
+        if verbose_logging:
+            self.log.setLevel(logging.DEBUG)
+
         self.reset()
 
     def reset(self):
@@ -27,12 +32,35 @@ class Environment(object):
         self.resources = {}
         self.resource_list = []
         self.delayed_actions = set()
-        self.update_config({
+
+        default_config = {
             'date': datetime.now(),
             'kokki.long_version': long_version(),
             'kokki.backup.path': '/tmp/kokki/backup',
+            'kokki.template_engine': 'jinja2',
             'kokki.backup.prefix': datetime.now().strftime("%Y%m%d%H%M%S"),
-        })
+        }
+
+        stored_config = self._load_kokki_conf()
+        if stored_config:
+            default_config.update(stored_config)
+
+        self.update_config(default_config)
+        self.log.debug('Environment.config: %s' % self.config)
+
+    def _load_kokki_conf(self):
+        # try:
+        #     import jsonpickle
+        #     conf_path = os.path.join(os.path.dirname(__file__), 'kokki_conf.json')
+        #     if os.path.exists(conf_path):
+        #         with open(conf_path, "rb") as fp:
+        #             return jsonpickle.decode(fp.read())
+        #     else:
+        #         self.log.warning('kokki_conf.json not found. Using defaults.')
+        #         return None
+        # except ImportError:
+        #     self.log.warning('Can not read kokki_conf.json because jsonpickle is not installed. Using defaults.')
+        return None
 
     def backup_file(self, path):
         if self.config.kokki.backup:
@@ -55,14 +83,20 @@ class Environment(object):
                 attr[path[-1]] = value
 
     def run_action(self, resource, action):
-        self.log.debug("Performing action %s on %s" % (action, resource))
+        self.log.info("START: Performing action '%s' on resource '%s'" % (action, resource))
 
-        provider_class = find_provider(self, resource.__class__.__name__, resource.provider)
+        if callable(resource.provider):
+            provider_class = resource.provider
+        else:
+            provider_class = find_provider(self, resource.__class__.__name__, resource.provider)
+
         provider = provider_class(resource)
+
         try:
             provider_action = getattr(provider, 'action_%s' % action)
         except AttributeError:
             raise Fail("%r does not implement action %s" % (provider, action))
+
         provider_action()
 
         if resource.is_updated:
@@ -72,6 +106,8 @@ class Environment(object):
             for action, res in resource.subscriptions['delayed']:
                 self.log.info("%s sending %s action to %s (delayed)" % (resource, action, res))
             self.delayed_actions |= resource.subscriptions['delayed']
+
+        self.log.info("END: Performing action '%s' on resource '%s'" % (action, resource))
 
     def _check_condition(self, cond):
         if hasattr(cond, '__call__'):
@@ -84,6 +120,7 @@ class Environment(object):
         raise Exception("Unknown condition type %r" % cond)
 
     def run(self):
+        self.log.debug('> Environment.run()')
         with self:
             # Run resource actions
             for resource in self.resource_list:
@@ -92,7 +129,7 @@ class Environment(object):
                 if resource.not_if is not None and self._check_condition(resource.not_if):
                     self.log.debug("Skipping %s due to not_if" % resource)
                     continue
- 
+
                 if resource.only_if is not None and not self._check_condition(resource.only_if):
                     self.log.debug("Skipping %s due to only_if" % resource)
                     continue
@@ -104,6 +141,7 @@ class Environment(object):
             while self.delayed_actions:
                 action, resource = self.delayed_actions.pop()
                 self.run_action(resource, action)
+        self.log.debug('< Environment.run()')
 
     @classmethod
     def get_instance(cls):

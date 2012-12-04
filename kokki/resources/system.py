@@ -22,7 +22,7 @@ class Directory(Resource):
     group = ResourceArgument()
     recursive = BooleanArgument(default=False)
 
-    actions = Resource.actions + ["create", "delete"]
+    actions = Resource.actions + ["create", "delete", "empty"]
 
 class Link(Resource):
     action = ForcedListArgument(default="create")
@@ -42,6 +42,7 @@ class Execute(Resource):
     group = ResourceArgument()
     returns = ForcedListArgument(default=0)
     timeout = ResourceArgument()
+    dry_run = ResourceArgument(default=False)
 
     actions = Resource.actions + ["run"]
 

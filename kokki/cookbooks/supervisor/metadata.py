@@ -11,7 +11,7 @@ __config__ = {
     ),
     "supervisor.custom_config_path": dict(
         description = "Path to custom supervisor config files",
-        default = "/etc/supervisor/conf.d", 
+        default = "/etc/supervisor/conf.d",
     ),
     "supervisor.binary_path": dict(
         description = "Path to the supervisor binaries",

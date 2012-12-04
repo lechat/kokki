@@ -1,5 +1,5 @@
-
 from __future__ import with_statement
+import logging
 
 __all__ = ["Source", "Template", "StaticFile", "DownloadSource"]
 
@@ -9,6 +9,14 @@ import urllib2
 import urlparse
 from kokki import environment
 from kokki.exceptions import Fail
+
+def load_class(class_name, *args, **kwargs):
+    parts = class_name.split('.')
+    module = ".".join(parts[:-1])
+    m = __import__( module )
+    for comp in parts[1:]:
+        m = getattr(m, comp)
+    return m(*args, **kwargs)
 
 class Source(object):
     def get_content(self):

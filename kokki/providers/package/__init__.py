@@ -6,10 +6,10 @@ class PackageProvider(Provider):
     def __init__(self, *args, **kwargs):
         super(PackageProvider, self).__init__(*args, **kwargs)
         self.get_current_status()
-    
+
     def get_current_status(self):
         raise NotImplementedError()
-    
+
     def install_package(self, name, version):
         raise NotImplementedError()
 
@@ -21,7 +21,7 @@ class PackageProvider(Provider):
 
     def upgrade_package(self, name, version):
         raise NotImplementedError()
-    
+
     def action_install(self):
         if self.resource.version != None and self.resource.version != self.current_version:
             install_version = self.resource.version
